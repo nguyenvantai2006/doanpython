@@ -1,0 +1,251 @@
+name: Train Models
+
+on:
+  workflow_call:
+
+env:
+  # 🔥 MUST match CI + docker-compose
+  HF_HOME: /github/home/.cache/huggingface
+  TRANSFORMERS_CACHE: /github/home/.cache/huggingface
+  HF_DATASETS_CACHE: /github/home/.cache/huggingface
+  HF_HUB_CACHE: /github/home/.cache/huggingface
+
+  PIP_CACHE_DIR: /github/home/.cache/pip
+
+  TOKENIZERS_PARALLELISM: false
+  CI_MODE: "1"
+
+  # ✅ IMPORTANT FIX FOR DOCKER VOLUME RESOLUTION
+  GITHUB_WORKSPACE: ${{ github.workspace }}
+
+jobs:
+  # ==========================================
+  # 1. TRAIN TFIDF MODEL
+  # ==========================================
+  train-model:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: mkdir -p models reports
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentiment-image
+
+      - name: Load shared image
+        run: gunzip -c sentiment-base.tar.gz | docker load
+
+      - name: Train Model
+        run: docker compose run --rm train-model
+
+      - name: DEBUG OUTPUT
+        run: |
+          echo "Models:"
+          ls -R models || true
+          echo "Reports:"
+          ls -R reports || true
+
+      - name: Verify model
+        run: test -f models/model_sentiment/sentiment_model.joblib
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trained-model
+          path: models/model_sentiment
+          compression-level: 0
+          if-no-files-found: error
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-train-model
+          path: reports/
+          compression-level: 0
+
+  # ==========================================
+  # 2. PHOBERT
+  # ==========================================
+  train-phobert:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: mkdir -p models reports
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentiment-image
+
+      - name: Load shared image
+        run: gunzip -c sentiment-base.tar.gz | docker load
+
+      - name: Train Model
+        run: docker compose run --rm train-phobert
+
+      - name: DEBUG OUTPUT
+        run: |
+          echo "Models:"
+          ls -R models || true
+          echo "Reports:"
+          ls -R reports || true
+
+      - name: Verify model
+        run: test -d models/bert_sentiment/phobert
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trained-phobert
+          path: models/bert_sentiment/phobert
+          compression-level: 0
+          if-no-files-found: error
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-train-phobert
+          path: reports/
+          compression-level: 0
+
+  # ==========================================
+  # 3. MBERT
+  # ==========================================
+  train-mbert:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: mkdir -p models reports
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentiment-image
+
+      - name: Load shared image
+        run: gunzip -c sentiment-base.tar.gz | docker load
+
+      - name: Train Model
+        run: docker compose run --rm train-mbert
+
+      - name: DEBUG OUTPUT
+        run: |
+          echo "Models:"
+          ls -R models || true
+          echo "Reports:"
+          ls -R reports || true
+
+      - name: Verify model
+        run: test -d models/bert_sentiment/mbert
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trained-mbert
+          path: models/bert_sentiment/mbert
+          compression-level: 0
+          if-no-files-found: error
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-train-mbert
+          path: reports/
+          compression-level: 0
+
+  # ==========================================
+  # 4. DEMO MODEL
+  # ==========================================
+  train-demo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: mkdir -p models reports
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentiment-image
+
+      - name: Load shared image
+        run: gunzip -c sentiment-base.tar.gz | docker load
+
+      - name: Train Model
+        run: docker compose run --rm train-demo
+
+      - name: DEBUG OUTPUT
+        run: |
+          echo "Models:"
+          ls -R models || true
+          echo "Reports:"
+          ls -R reports || true
+
+      - name: Verify model
+        run: test -d models/bert_sentiment/demo
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trained-demo
+          path: models/bert_sentiment/demo
+          compression-level: 0
+          if-no-files-found: error
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-train-demo
+          path: reports/
+          compression-level: 0
+
+  # ==========================================
+  # 5. COLLECT ALL MODELS
+  # ==========================================
+  collect-models:
+    runs-on: ubuntu-latest
+
+    needs:
+      - train-model
+      - train-phobert
+      - train-mbert
+      - train-demo
+
+    steps:
+      - run: |
+          mkdir -p models/model_sentiment
+          mkdir -p models/bert_sentiment/phobert
+          mkdir -p models/bert_sentiment/mbert
+          mkdir -p models/bert_sentiment/demo
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: trained-model
+          path: models/model_sentiment
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: trained-phobert
+          path: models/bert_sentiment/phobert
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: trained-mbert
+          path: models/bert_sentiment/mbert
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: trained-demo
+          path: models/bert_sentiment/demo
+
+      - name: FINAL STRUCTURE CHECK
+        run: |
+          echo "Final model structure:"
+          find models
+          du -sh models
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trained-models
+          path: models/
+          compression-level: 0

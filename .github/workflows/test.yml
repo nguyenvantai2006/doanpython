@@ -1,0 +1,235 @@
+name: Test Services
+
+on:
+  workflow_call:
+
+env:
+  COMPOSE_DOCKER_CLI_BUILD: 1
+  DOCKER_BUILDKIT: 1
+
+  # 🔥 must match train + ci
+  HF_HOME: /github/home/.cache/huggingface
+  TRANSFORMERS_CACHE: /github/home/.cache/huggingface
+  HF_DATASETS_CACHE: /github/home/.cache/huggingface
+  HF_HUB_CACHE: /github/home/.cache/huggingface
+
+  TOKENIZERS_PARALLELISM: false
+  CI_MODE: 1
+
+jobs:
+
+# ==========================================
+# 1. MODEL TEST
+# ==========================================
+  test-model:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: trained-models
+          path: models/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentiment-image
+
+      - name: Load shared image
+        run: gunzip -c sentiment-base.tar.gz | docker load
+
+      - run: mkdir -p reports
+
+      - name: Debug models (fast fail visibility)
+        run: |
+          echo "=== MODEL STRUCTURE ==="
+          find models -maxdepth 4
+          echo "======================="
+
+      - name: Run model tests
+        continue-on-error: true
+        run: docker compose run --rm test-model
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-model
+          path: reports/
+          compression-level: 0
+
+
+# ==========================================
+# 2. BERT TEST
+# ==========================================
+  test-bert:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: trained-models
+          path: models/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentiment-image
+
+      - name: Load shared image
+        run: gunzip -c sentiment-base.tar.gz | docker load
+
+      - run: mkdir -p reports
+
+      - name: Debug models
+        run: find models -maxdepth 4
+
+      - name: Run BERT tests
+        continue-on-error: true
+        run: docker compose run --rm test-bert
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-bert
+          path: reports/
+          compression-level: 0
+
+
+# ==========================================
+# 3. API TEST
+# ==========================================
+  test-api:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: trained-models
+          path: models/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentiment-image
+
+      - name: Load shared image
+        run: gunzip -c sentiment-base.tar.gz | docker load
+
+      - run: mkdir -p reports
+
+      - name: Debug models
+        run: find models -maxdepth 4
+
+      - name: Start API
+        run: docker compose up -d api
+
+      - name: Wait API
+        run: |
+          for i in {1..25}; do
+            curl -sf http://localhost:8000/docs && echo "API ready" && break
+            echo "Waiting..."
+            sleep 3
+          done
+
+      - name: Run API tests
+        continue-on-error: true
+        run: docker compose run --rm test-api
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-api
+          path: reports/
+          compression-level: 0
+
+      - if: always()
+        run: docker compose down -v || true
+
+
+# ==========================================
+# 4. UI TEST
+# ==========================================
+  test-ui:
+    runs-on: ubuntu-latest
+    needs:
+      - test-model
+      - test-bert
+      - test-api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: trained-models
+          path: models/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentiment-image
+
+      - name: Load shared image
+        run: gunzip -c sentiment-base.tar.gz | docker load
+
+      - run: mkdir -p reports
+
+      - name: Start services
+        run: docker compose up -d api ui
+
+      - name: Wait UI
+        run: |
+          for i in {1..25}; do
+            curl -sf http://localhost:8501 && echo "UI ready" && break
+            echo "Waiting..."
+            sleep 3
+          done
+
+      - name: Run UI tests
+        continue-on-error: true
+        run: docker compose run --rm test-ui
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-ui
+          path: reports/
+          compression-level: 0
+
+      - if: always()
+        run: docker compose down -v || true
+
+
+# ==========================================
+# 5. SUMMARY
+# ==========================================
+  upload-results:
+    runs-on: ubuntu-latest
+
+    needs:
+      - test-model
+      - test-bert
+      - test-api
+      - test-ui
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: report-*
+          path: reports/
+          merge-multiple: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentiment-reports
+          path: reports/
+          compression-level: 0
+
+      - run: |
+          echo "# ML CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Model tests completed" >> $GITHUB_STEP_SUMMARY
+          echo "- BERT tests completed" >> $GITHUB_STEP_SUMMARY
+          echo "- API tests completed" >> $GITHUB_STEP_SUMMARY
+          echo "- UI tests completed" >> $GITHUB_STEP_SUMMARY

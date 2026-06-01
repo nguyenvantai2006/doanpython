@@ -1,0 +1,24 @@
+name: Deploy Application
+
+on:
+  workflow_call:
+
+jobs:
+
+# ==========================================
+# DEPLOY SUMMARY
+# ==========================================
+  deploy-production:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deployment summary
+        run: |
+          echo "# 🚀 Deployment Completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Services (CI environment)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| Model API | http://localhost:8000/docs |" >> $GITHUB_STEP_SUMMARY
+          echo "| UI | http://localhost:8501 |" >> $GITHUB_STEP_SUMMARY

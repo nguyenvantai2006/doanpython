@@ -1,0 +1,107 @@
+name: Main CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+
+  pull_request:
+    branches:
+      - main
+
+env:
+  COMPOSE_DOCKER_CLI_BUILD: 1
+  DOCKER_BUILDKIT: 1
+  BUILDKIT_PROGRESS: plain
+
+  TOKENIZERS_PARALLELISM: false
+  CI_MODE: 1
+
+  # 🔥 unified HF cache (shared across ALL jobs)
+  HF_HOME: /github/home/.cache/huggingface
+  TRANSFORMERS_CACHE: /github/home/.cache/huggingface
+  HF_DATASETS_CACHE: /github/home/.cache/huggingface
+  HF_HUB_CACHE: /github/home/.cache/huggingface
+
+  PIP_CACHE_DIR: /github/home/.cache/pip
+
+jobs:
+
+# ==========================================
+# 1. BUILD SHARED IMAGE (FAST + CACHED)
+# ==========================================
+  build-image:
+    name: Build Shared Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 🔥 Docker BuildKit cache backend
+      - name: Build Docker image (cached)
+        run: |
+          docker build \
+            -t sentiment-base \
+            --cache-from=type=gha \
+            --cache-to=type=gha,mode=max \
+            .
+
+      - name: Save image
+        run: |
+          docker save sentiment-base | gzip -1 > sentiment-base.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentiment-image
+          path: sentiment-base.tar.gz
+          compression-level: 0
+
+      # 🔥 persist HF cache
+      - name: Cache HuggingFace
+        uses: actions/cache@v4
+        with:
+          path: /github/home/.cache/huggingface
+          key: hf-${{ runner.os }}-v1
+          restore-keys: |
+            hf-${{ runner.os }}-
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: /github/home/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}
+
+
+# ==========================================
+# 2. TRAIN MODELS
+# ==========================================
+  train-models:
+    name: Train Models
+    needs: build-image
+    uses: ./.github/workflows/train.yml
+    secrets: inherit
+
+
+# ==========================================
+# 3. RUN TESTS
+# ==========================================
+  run-tests:
+    name: Run Tests
+    needs:
+      - build-image
+      - train-models
+    uses: ./.github/workflows/test.yml
+    secrets: inherit
+
+
+# ==========================================
+# 4. DEPLOY (SUMMARY ONLY)
+# ==========================================
+  deploy-application:
+    name: Deploy Application
+    needs: run-tests
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

@@ -1,0 +1,193 @@
+version: "3.9"
+
+networks:
+  test-net:
+    driver: bridge
+
+
+# ==========================================
+# SHARED BASE IMAGE (BUILD ONLY)
+# ==========================================
+services:
+
+  base:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sentiment-base
+    pull_policy: never
+    working_dir: /app
+    environment:
+      PYTHONPATH: /app
+      PYTHONUNBUFFERED: 1
+
+      # HuggingFace cache (CI-safe)
+      HF_HOME: /github/home/.cache/huggingface
+      TRANSFORMERS_CACHE: /github/home/.cache/huggingface
+      HF_DATASETS_CACHE: /github/home/.cache/huggingface
+      HF_HUB_CACHE: /github/home/.cache/huggingface
+      PIP_CACHE_DIR: /github/home/.cache/pip
+
+    networks:
+      - test-net
+
+
+# ==========================================
+# TRAINING JOBS
+# ==========================================
+
+  train-model:
+    image: sentiment-base
+    working_dir: /app
+    command: python src/train.py
+    volumes:
+      - ${GITHUB_WORKSPACE}/models:/app/models
+      - ${GITHUB_WORKSPACE}/reports:/app/reports
+    environment:
+      PYTHONUNBUFFERED: 1
+      CI_MODE: "1"
+    networks:
+      - test-net
+
+
+  train-phobert:
+    image: sentiment-base
+    working_dir: /app
+    command: python src/train_bert.py --model phobert --ci_mode
+    volumes:
+      - ${GITHUB_WORKSPACE}/models:/app/models
+      - ${GITHUB_WORKSPACE}/reports:/app/reports
+    environment:
+      CI_MODE: "1"
+    networks:
+      - test-net
+
+
+  train-mbert:
+    image: sentiment-base
+    working_dir: /app
+    command: python src/train_bert.py --model mbert --ci_mode
+    volumes:
+      - ${GITHUB_WORKSPACE}/models:/app/models
+      - ${GITHUB_WORKSPACE}/reports:/app/reports
+    environment:
+      CI_MODE: "1"
+    networks:
+      - test-net
+
+
+  train-demo:
+    image: sentiment-base
+    working_dir: /app
+    command: python src/train_bert.py --model demo --ci_mode
+    volumes:
+      - ${GITHUB_WORKSPACE}/models:/app/models
+      - ${GITHUB_WORKSPACE}/reports:/app/reports
+    environment:
+      CI_MODE: "1"
+    networks:
+      - test-net
+
+
+# ==========================================
+# API SERVICE
+# ==========================================
+  api:
+    image: sentiment-base
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      MODEL_PATH: /app/models/model_sentiment/sentiment_model.joblib
+      PYTHONUNBUFFERED: 1
+    volumes:
+      - ${GITHUB_WORKSPACE}/models:/app/models
+    networks:
+      - test-net
+
+
+# ==========================================
+# UI SERVICE
+# ==========================================
+  ui:
+    image: sentiment-base
+    working_dir: /app
+    ports:
+      - "8501:8501"
+    command: streamlit run ui/sentiment_app.py
+    environment:
+      API_URL: http://api:8000
+    volumes:
+      - ${GITHUB_WORKSPACE}/models:/app/models
+    networks:
+      - test-net
+
+
+# ==========================================
+# TESTS
+# ==========================================
+
+  test-model:
+    image: sentiment-base
+    working_dir: /app
+    command: python tests/test_model.py
+    volumes:
+      - ${GITHUB_WORKSPACE}/models:/app/models
+      - ${GITHUB_WORKSPACE}/reports:/app/reports
+    networks:
+      - test-net
+
+
+  test-bert:
+    image: sentiment-base
+    working_dir: /app
+    environment:
+      CI_MODE: "1"
+    command: python tests/test_bert.py
+    volumes:
+      - ${GITHUB_WORKSPACE}/models:/app/models
+      - ${GITHUB_WORKSPACE}/reports:/app/reports
+    networks:
+      - test-net
+
+
+  test-api:
+    image: sentiment-base
+    working_dir: /app
+    environment:
+      BASE_URL: http://api:8000
+      CI_MODE: "1"
+    command: >
+      pytest tests/test_api.py
+      -v
+      --html=/app/reports/api_test_report.html
+      --self-contained-html
+    volumes:
+      - ${GITHUB_WORKSPACE}/reports:/app/reports
+    networks:
+      - test-net
+
+
+  test-ui:
+    image: mcr.microsoft.com/playwright/python:v1.54.0-jammy
+
+    working_dir: /app
+
+    environment:
+      UI_URL: http://ui:8501
+      CI_MODE: "1"
+
+    command: >
+      bash -c "
+      pip install -r requirements.txt &&
+      mkdir -p reports &&
+      pytest tests/test_ui.py -v --html=/app/reports/ui_test_report.html --self-contained-html
+      "
+
+    volumes:
+      - .:/app
+      - ${GITHUB_WORKSPACE}/reports:/app/reports
+
+    networks:
+      - test-net

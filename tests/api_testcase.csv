@@ -1,0 +1,276 @@
+TC_ID,Category,Type,Method,Endpoint,Request,Expected_Status,Expected_Result
+
+# =========================
+# SYSTEM (2)
+# =========================
+TC001,System,system,GET,/health,,200,healthy
+TC002,System,system,GET,/,,200,running
+
+# =========================
+# TFIDF (3)
+# =========================
+TC003,TFIDF,positive,POST,/predict,"{'text':'rất tốt'}",200,POSITIVE
+TC004,TFIDF,negative,POST,/predict,"{'text':'quá tệ'}",200,NEGATIVE
+TC005,TFIDF,neutral,POST,/predict,"{'text':'bình thường'}",200,NEUTRAL
+
+# =========================
+# BATCH (2)
+# =========================
+TC006,BATCH,positive,POST,/predict/batch,"{'texts':['rất tốt','đẹp']}",200,
+TC007,BATCH,negative,POST,/predict/batch,"{'texts':['tệ','xấu']}",200,
+
+# =========================
+# EDGE (3)
+# =========================
+TC008,EDGE,empty,POST,/predict,"{'text':''}",422,
+TC009,EDGE,null,POST,/predict,"{'text':null}",422,
+TC010,EDGE,invalid,POST,/predict,"{}",422,
+
+# =========================
+# BATCH_EDGE (2)
+# =========================
+TC011,BATCH_EDGE,empty,POST,/predict/batch,"{'texts':[]}",422,
+TC012,BATCH_EDGE,null,POST,/predict/batch,"{'texts':[null]}",422,
+
+# =========================
+# BERT (3)
+# =========================
+TC013,BERT,phobert,POST,/predict,"{'text':'rất tốt','model':'bert','sub_model':'phobert'}",200,POSITIVE
+TC014,BERT,mbert,POST,/predict,"{'text':'rất tốt','model':'bert','sub_model':'mbert'}",200,POSITIVE
+TC015,BERT,demo,POST,/predict,"{'text':'rất tốt','model':'bert','sub_model':'demo'}",200,POSITIVE
+
+# =========================
+# BERT_INVALID (1)
+# =========================
+TC016,BERT_INVALID,invalid,POST,/predict,"{'text':'rất tốt','model':'bert','sub_model':'abc'}",200,
+
+# =========================
+# ROUTING (4)
+# =========================
+TC017,ROUTING,priority,POST,/predict?model=tfidf,"{'text':'rất tốt','model':'bert'}",200,POSITIVE
+TC018,ROUTING,priority,POST,/predict?model=bert,"{'text':'quá tệ','model':'tfidf'}",200,NEGATIVE
+TC019,ROUTING,consistency,POST,/predict?model=tfidf,"{'text':'rất tốt','model':'bert'}",200,POSITIVE
+TC020,ROUTING,consistency,POST,/predict?model=bert,"{'text':'rất tốt','model':'tfidf'}",200,POSITIVE
+
+# =========================
+# SECURITY (3)
+# =========================
+TC021,SECURITY,xss,POST,/predict,"{'text':'<script>alert(1)</script>'}",200,NEUTRAL
+TC022,SECURITY,sql,POST,/predict,"{'text':'DROP TABLE users'}",200,NEUTRAL
+TC023,SECURITY,html,POST,/predict,"{'text':'<img src=x onerror=alert(1)>'}",200,NEUTRAL
+
+# =========================
+# BOUNDARY (5)
+# =========================
+TC024,BOUNDARY,min,POST,/predict,"{'text':'a'}",200,NEUTRAL
+TC025,BOUNDARY,max,POST,/predict,"{'text':'__2000_A__'}",200,POSITIVE
+TC026,BOUNDARY,overflow,POST,/predict,"{'text':'__2001_A__'}",422,ERROR
+TC027,BOUNDARY,edge,POST,/predict,"{'text':'a'*200}",200,POSITIVE
+TC028,BOUNDARY,edge,POST,/predict,"{'text':'a'*2001}",422,ERROR
+
+# =========================
+# MIXED (2)
+# =========================
+TC029,MIXED,complex,POST,/predict,"{'text':'đẹp nhưng thất vọng'}",200,NEGATIVE
+TC030,CONTRADICTION,mixed,POST,/predict,"{'text':'đẹp nhưng rất tệ'}",200,NEGATIVE
+
+# =========================
+# BATCH_LARGE (1)
+# =========================
+TC031,BATCH_LARGE,normal,POST,/predict/batch,"{'texts':['t1','t2','t3','t4','t5']}",200,
+
+# =========================
+# SARCASM (10)
+# =========================
+TC032,SARCASM,strong,POST,/predict,"{'text':'tuyệt vời quá, hỏng ngay'}",200,NEGATIVE
+TC033,SARCASM,strong,POST,/predict,"{'text':'đỉnh cao, dùng 1 phút là hỏng'}",200,NEGATIVE
+TC034,SARCASM,advanced,POST,/predict,"{'text':'sản phẩm tuyệt vời, lỗi ngay'}",200,NEGATIVE
+TC035,SARCASM,advanced,POST,/predict,"{'text':'quá tốt, chờ 1 tháng'}",200,NEGATIVE
+TC036,SARCASM,advanced,POST,/predict,"{'text':'đáng tiền, tiền mất luôn'}",200,NEGATIVE
+TC037,SARCASM,advanced,POST,/predict,"{'text':'quá tuyệt, hỏng lần đầu'}",200,NEGATIVE
+TC038,SARCASM,advanced,POST,/predict,"{'text':'best product ever, broken'}",200,NEGATIVE
+TC039,SARCASM,advanced,POST,/predict,"{'text':'amazing, totally useless'}",200,NEGATIVE
+TC040,SARCASM,advanced,POST,/predict,"{'text':'great, waste of money'}",200,NEGATIVE
+TC041,SARCASM,advanced,POST,/predict,"{'text':'so good, I regret buying'}",200,NEGATIVE
+
+# =========================
+# MIXED_HARD (5)
+# =========================
+TC042,MIXED_HARD,contrast,POST,/predict,"{'text':'rất đẹp nhưng tệ'}",200,NEGATIVE
+TC043,MIXED_HARD,contrast,POST,/predict,"{'text':'xấu nhưng ổn'}",200,NEUTRAL
+TC044,MIXED_HARD,contrast,POST,/predict,"{'text':'giá cao nhưng tốt'}",200,POSITIVE
+TC045,MIXED_HARD,contrast,POST,/predict,"{'text':'đẹp nhưng vô dụng'}",200,NEGATIVE
+TC046,MIXED_HARD,contrast,POST,/predict,"{'text':'tệ nhưng dùng được'}",200,NEUTRAL
+
+# =========================
+# NEGATION (20)
+# =========================
+TC047,NEGATION,hard,POST,/predict,"{'text':'không hề tệ'}",200,POSITIVE
+TC048,NEGATION,hard,POST,/predict,"{'text':'không tốt lắm'}",200,NEGATIVE
+TC049,NEGATION,hard,POST,/predict,"{'text':'không phải xấu'}",200,POSITIVE
+TC050,NEGATION,hard,POST,/predict,"{'text':'không xấu'}",200,POSITIVE
+TC051,NEGATION,hard,POST,/predict,"{'text':'không tốt'}",200,NEGATIVE
+TC052,NEGATION,hard,POST,/predict,"{'text':'không quá tốt'}",200,NEUTRAL
+TC053,NEGATION,hard,POST,/predict,"{'text':'chẳng tệ'}",200,POSITIVE
+TC054,NEGATION,hard,POST,/predict,"{'text':'không đáng tiền'}",200,NEGATIVE
+TC055,NEGATION,hard,POST,/predict,"{'text':'không ổn lắm'}",200,NEGATIVE
+TC056,NEGATION,hard,POST,/predict,"{'text':'không hài lòng'}",200,NEGATIVE
+TC057,NEGATION,hard,POST,/predict,"{'text':'không thể tệ hơn'}",200,NEGATIVE
+TC058,NEGATION,hard,POST,/predict,"{'text':'không thể tốt hơn'}",200,POSITIVE
+TC059,NEGATION,hard,POST,/predict,"{'text':'không có gì để chê'}",200,POSITIVE
+TC060,NEGATION,hard,POST,/predict,"{'text':'không có gì tốt'}",200,NEGATIVE
+TC061,NEGATION,hard,POST,/predict,"{'text':'không gì đặc biệt'}",200,NEUTRAL
+TC062,NEGATION,hard,POST,/predict,"{'text':'không tệ nhưng ổn'}",200,NEUTRAL
+TC063,NEGATION,hard,POST,/predict,"{'text':'không ổn nhưng dùng được'}",200,NEUTRAL
+TC064,NEGATION,hard,POST,/predict,"{'text':'không phải không tốt'}",200,POSITIVE
+TC065,NEGATION,hard,POST,/predict,"{'text':'không hài lòng lắm'}",200,NEGATIVE
+TC066,NEGATION,hard,POST,/predict,"{'text':'không đến nỗi tệ'}",200,NEUTRAL
+
+# =========================
+# INTENSITY (8)
+# =========================
+TC067,INTENSITY,strong,POST,/predict,"{'text':'tốt'}",200,POSITIVE
+TC068,INTENSITY,strong,POST,/predict,"{'text':'rất tốt'}",200,POSITIVE
+TC069,INTENSITY,strong,POST,/predict,"{'text':'cực kỳ tốt'}",200,POSITIVE
+TC070,INTENSITY,strong,POST,/predict,"{'text':'tệ'}",200,NEGATIVE
+TC071,INTENSITY,strong,POST,/predict,"{'text':'cực kỳ tệ'}",200,NEGATIVE
+TC072,INTENSITY,strong,POST,/predict,"{'text':'siêu tốt'}",200,POSITIVE
+TC073,INTENSITY,strong,POST,/predict,"{'text':'siêu tệ'}",200,NEGATIVE
+TC074,INTENSITY,strong,POST,/predict,"{'text':'cực kỳ ổn'}",200,POSITIVE
+
+# =========================
+# AMBIGUOUS (6)
+# =========================
+TC075,AMBIGUOUS,weak,POST,/predict,"{'text':'khá tốt'}",200,POSITIVE
+TC076,AMBIGUOUS,weak,POST,/predict,"{'text':'khá tệ'}",200,NEGATIVE
+TC077,AMBIGUOUS,weak,POST,/predict,"{'text':'tạm ổn'}",200,NEUTRAL
+TC078,AMBIGUOUS,weak,POST,/predict,"{'text':'cũng ok'}",200,NEUTRAL
+TC079,AMBIGUOUS,weak,POST,/predict,"{'text':'được'}",200,NEUTRAL
+TC080,AMBIGUOUS,weak,POST,/predict,"{'text':'không đến nỗi nào'}",200,NEUTRAL
+
+# =========================
+# EMOJI (5)
+# =========================
+TC081,EMOJI_ONLY,strong,POST,/predict,"{'text':'😍😍😍'}",200,POSITIVE
+TC082,EMOJI_ONLY,strong,POST,/predict,"{'text':'😡😡😡'}",200,NEGATIVE
+TC083,EMOJI_ONLY,mixed,POST,/predict,"{'text':'🙂😐🙂'}",200,NEUTRAL
+TC084,EMOJI_MIX,complex,POST,/predict,"{'text':'😍 nhưng tệ'}",200,NEGATIVE
+TC085,EMOJI_MIX,complex,POST,/predict,"{'text':'😐 nhưng ổn'}",200,NEUTRAL
+
+# =========================
+# MIX LANGUAGE (5)
+# =========================
+TC086,MIX_LANGUAGE,code,POST,/predict,"{'text':'product good'}",200,POSITIVE
+TC087,MIX_LANGUAGE,code,POST,/predict,"{'text':'service bad'}",200,NEGATIVE
+TC088,MIX_LANGUAGE,code,POST,/predict,"{'text':'ok but expensive'}",200,NEUTRAL
+TC089,MIX_LANGUAGE,code,POST,/predict,"{'text':'good nhưng tệ'}",200,NEGATIVE
+TC090,MIX_LANGUAGE,code,POST,/predict,"{'text':'bad but ok'}",200,NEUTRAL
+
+# =========================
+# DOMAIN (6)
+# =========================
+TC091,DOMAIN,non_review,POST,/predict,"{'text':'trời đẹp'}",200,NEUTRAL
+TC092,DOMAIN,non_review,POST,/predict,"{'text':'tôi mệt'}",200,NEUTRAL
+TC093,DOMAIN,question,POST,/predict,"{'text':'dịch vụ ổn không?'}",200,NEUTRAL
+TC094,DOMAIN,non_review,POST,/predict,"{'text':'đi học hôm nay'}",200,NEUTRAL
+TC095,DOMAIN,non_review,POST,/predict,"{'text':'thời tiết đẹp'}",200,NEUTRAL
+TC096,DOMAIN,non_review,POST,/predict,"{'text':'bài học tốt'}",200,NEUTRAL
+
+# =========================
+# COMPARISON (3)
+# =========================
+TC097,COMPARISON,compare,POST,/predict,"{'text':'A tốt hơn B'}",200,POSITIVE
+TC098,COMPARISON,compare,POST,/predict,"{'text':'xấu hơn bản cũ'}",200,NEGATIVE
+TC099,COMPARISON,compare,POST,/predict,"{'text':'tốt hơn trước'}",200,POSITIVE
+
+# =========================
+# ENCODING (3)
+# =========================
+TC100,ENCODING,noise,POST,/predict,"{'text':'rất tốt'}",200,POSITIVE
+TC101,ENCODING,noise,POST,/predict,"{'text':'rất tốt'}",200,POSITIVE
+TC102,ENCODING,noise,POST,/predict,"{'text':'rất tốt'}",200,POSITIVE
+
+# =========================
+# IRONY (1)
+# =========================
+TC103,IRONY,advanced,POST,/predict,"{'text':'tuyệt vời, lỗi liên tục'}",200,NEGATIVE
+
+# =========================
+# NOISE (15)
+# =========================
+TC104,NOISE,random,POST,/predict,"{'text':'asdfghjkl'}",200,NEUTRAL
+TC105,NOISE,typo,POST,/predict,"{'text':'rất tệ'}",200,NEGATIVE
+TC106,NOISE,typo,POST,/predict,"{'text':'rất tốt'}",200,POSITIVE
+TC107,NOISE,emoji_noise,POST,/predict,"{'text':'😍😂😡😐'}",200,NEUTRAL
+TC108,NOISE,mixed,POST,/predict,"{'text':'rất tốt'}",200,POSITIVE
+TC109,NOISE,url,POST,/predict,"{'text':'tệ'}",200,NEGATIVE
+TC110,NOISE,html,POST,/predict,"{'text':'tốt'}",200,POSITIVE
+TC111,NOISE,sql,POST,/predict,"{'text':'DROP TABLE'}",200,NEUTRAL
+TC112,NOISE,xss,POST,/predict,"{'text':'bad'}",200,NEUTRAL
+TC113,NOISE,unicode,POST,/predict,"{'text':'tốt'}",200,POSITIVE
+TC114,NOISE,unicode,POST,/predict,"{'text':'tệ'}",200,NEGATIVE
+TC115,NOISE,spacing,POST,/predict,"{'text':'tốt'}",200,POSITIVE
+TC116,NOISE,newline,POST,/predict,"{'text':'tốt'}",200,POSITIVE
+TC117,NOISE,tabs,POST,/predict,"{'text':'tốt'}",200,POSITIVE
+TC118,NOISE,garbage,POST,/predict,"{'text':'123'}",200,NEUTRAL
+
+# =========================
+# SLANG VIETNAMESE (25 clean + strong signal)
+# =========================
+TC119,SLANG,mild,POST,/predict,"{'text':'xài ổn áp'}",200,POSITIVE
+TC120,SLANG,mild,POST,/predict,"{'text':'ok lắm'}",200,POSITIVE
+TC121,SLANG,mild,POST,/predict,"{'text':'cũng dc'}",200,NEUTRAL
+TC122,SLANG,strong,POST,/predict,"{'text':'xịn vl'}",200,POSITIVE
+TC123,SLANG,strong,POST,/predict,"{'text':'đỉnh của chóp'}",200,POSITIVE
+TC124,SLANG,strong,POST,/predict,"{'text':'tệ vãi l'}",200,NEGATIVE
+TC125,SLANG,strong,POST,/predict,"{'text':'fail sml'}",200,NEGATIVE
+TC126,SLANG,strong,POST,/predict,"{'text':'chán vl'}",200,NEGATIVE
+TC127,SLANG,strong,POST,/predict,"{'text':'ngon vl'}",200,POSITIVE
+TC128,SLANG,strong,POST,/predict,"{'text':'dở vl'}",200,NEGATIVE
+TC129,SLANG,strong,POST,/predict,"{'text':'xịn xò'}",200,POSITIVE
+TC130,SLANG,strong,POST,/predict,"{'text':'toang rồi'}",200,NEGATIVE
+TC131,SLANG,strong,POST,/predict,"{'text':'okela'}",200,POSITIVE
+TC132,SLANG,strong,POST,/predict,"{'text':'tệ hại'}",200,NEGATIVE
+TC133,SLANG,strong,POST,/predict,"{'text':'phê vl'}",200,POSITIVE
+TC134,SLANG,strong,POST,/predict,"{'text':'ngon nghẻ'}",200,POSITIVE
+TC135,SLANG,strong,POST,/predict,"{'text':'tởm vl'}",200,NEGATIVE
+TC136,SLANG,strong,POST,/predict,"{'text':'chất lừ'}",200,POSITIVE
+TC137,SLANG,strong,POST,/predict,"{'text':'fail toàn tập'}",200,NEGATIVE
+TC138,SLANG,strong,POST,/predict,"{'text':'ngon xỉu'}",200,POSITIVE
+TC139,SLANG,strong,POST,/predict,"{'text':'tệ xỉu'}",200,NEGATIVE
+TC140,SLANG,strong,POST,/predict,"{'text':'đỉnh cao'}",200,POSITIVE
+TC141,SLANG,strong,POST,/predict,"{'text':'toang'}",200,NEGATIVE
+TC142,SLANG,strong,POST,/predict,"{'text':'fire'}",200,POSITIVE
+TC143,SLANG,strong,POST,/predict,"{'text':'trash'}",200,NEGATIVE
+TC144,SLANG,strong,POST,/predict,"{'text':'mid'}",200,NEUTRAL
+TC145,SLANG,strong,POST,/predict,"{'text':'meh'}",200,NEUTRAL
+TC146,SLANG,strong,POST,/predict,"{'text':'not bad'}",200,POSITIVE
+TC147,SLANG,strong,POST,/predict,"{'text':'not good'}",200,NEGATIVE
+TC148,SLANG,strong,POST,/predict,"{'text':'super good'}",200,POSITIVE
+TC149,SLANG,strong,POST,/predict,"{'text':'super bad'}",200,NEGATIVE
+TC150,SLANG,strong,POST,/predict,"{'text':'average'}",200,NEUTRAL
+TC151,SLANG,strong,POST,/predict,"{'text':'lit'}",200,POSITIVE
+TC152,SLANG,strong,POST,/predict,"{'text':'bad vibe'}",200,NEGATIVE
+TC153,SLANG,strong,POST,/predict,"{'text':'good vibe'}",200,POSITIVE
+TC154,SLANG,strong,POST,/predict,"{'text':'so good'}",200,POSITIVE
+TC155,SLANG,strong,POST,/predict,"{'text':'so bad'}",200,NEGATIVE
+TC156,SLANG,strong,POST,/predict,"{'text':'kinda ok'}",200,NEUTRAL
+TC157,SLANG,strong,POST,/predict,"{'text':'garbage'}",200,NEGATIVE
+TC158,SLANG,strong,POST,/predict,"{'text':'best ever'}",200,POSITIVE
+TC159,SLANG,strong,POST,/predict,"{'text':'good vibe'}",200,POSITIVE
+TC160,SLANG,strong,POST,/predict,"{'text':'bad vibe'}",200,NEGATIVE
+TC161,SLANG,strong,POST,/predict,"{'text':'fire'}",200,POSITIVE
+TC162,SLANG,strong,POST,/predict,"{'text':'trash'}",200,NEGATIVE
+TC163,SLANG,strong,POST,/predict,"{'text':'meh'}",200,NEUTRAL
+TC164,SLANG,strong,POST,/predict,"{'text':'ok'}",200,POSITIVE
+TC165,SLANG,strong,POST,/predict,"{'text':'bad'}",200,NEGATIVE
+TC166,SLANG,strong,POST,/predict,"{'text':'good'}",200,POSITIVE
+TC167,SLANG,strong,POST,/predict,"{'text':'fine'}",200,NEUTRAL
+TC168,SLANG,strong,POST,/predict,"{'text':'awesome'}",200,POSITIVE
+TC169,SLANG,strong,POST,/predict,"{'text':'terrible'}",200,NEGATIVE
+TC170,SLANG,strong,POST,/predict,"{'text':'love it'}",200,POSITIVE
+TC171,SLANG,strong,POST,/predict,"{'text':'hate it'}",200,NEGATIVE
+TC172,SLANG,strong,POST,/predict,"{'text':'nice'}",200,POSITIVE
+TC173,SLANG,strong,POST,/predict,"{'text':'boring'}",200,NEGATIVE
+TC174,SLANG,strong,POST,/predict,"{'text':'cool'}",200,POSITIVE
+TC175,SLANG,strong,POST,/predict,"{'text':'average'}",200,NEUTRAL
