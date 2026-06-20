@@ -7,11 +7,11 @@ TC001,System,system,GET,/health,,200,healthy
 TC002,System,system,GET,/,,200,running
 
 # =========================
-# TFIDF (3)
+# BILSTM (3)
 # =========================
-TC003,TFIDF,positive,POST,/predict,"{'text':'rất tốt'}",200,POSITIVE
-TC004,TFIDF,negative,POST,/predict,"{'text':'quá tệ'}",200,NEGATIVE
-TC005,TFIDF,neutral,POST,/predict,"{'text':'bình thường'}",200,NEUTRAL
+TC003,BILSTM,positive,POST,/predict,"{'text':'rất tốt','model':'bilstm'}",200,POSITIVE
+TC004,BILSTM,negative,POST,/predict,"{'text':'quá tệ','model':'bilstm'}",200,NEGATIVE
+TC005,BILSTM,neutral,POST,/predict,"{'text':'bình thường','model':'bilstm'}",200,NEUTRAL
 
 # =========================
 # BATCH (2)
@@ -47,10 +47,10 @@ TC016,BERT_INVALID,invalid,POST,/predict,"{'text':'rất tốt','model':'bert','
 # =========================
 # ROUTING (4)
 # =========================
-TC017,ROUTING,priority,POST,/predict?model=tfidf,"{'text':'rất tốt','model':'bert'}",200,POSITIVE
-TC018,ROUTING,priority,POST,/predict?model=bert,"{'text':'quá tệ','model':'tfidf'}",200,NEGATIVE
-TC019,ROUTING,consistency,POST,/predict?model=tfidf,"{'text':'rất tốt','model':'bert'}",200,POSITIVE
-TC020,ROUTING,consistency,POST,/predict?model=bert,"{'text':'rất tốt','model':'tfidf'}",200,POSITIVE
+TC017,ROUTING,priority,POST,/predict?model=bilstm,"{'text':'rất tốt','model':'bert'}",200,POSITIVE
+TC018,ROUTING,priority,POST,/predict?model=bert,"{'text':'quá tệ','model':'bilstm'}",200,NEGATIVE
+TC019,ROUTING,consistency,POST,/predict?model=bilstm,"{'text':'rất tốt','model':'bert'}",200,POSITIVE
+TC020,ROUTING,consistency,POST,/predict?model=bert,"{'text':'rất tốt','model':'bilstm'}",200,POSITIVE
 
 # =========================
 # SECURITY (3)

@@ -2,8 +2,7 @@
 
 Phân tích cảm xúc đánh giá sản phẩm tiếng Việt với hỗ trợ:
 
-- TF-IDF + Machine Learning (Logistic Regression / SVM / Naive Bayes)
-- BERT (PhoBERT / mBERT / Demo model)
+- BERT and BiLSTM sentiment models
 - FastAPI inference service
 - Streamlit dashboard
 - Automated testing
@@ -23,7 +22,7 @@ Phân tích cảm xúc đánh giá sản phẩm tiếng Việt với hỗ trợ:
 SentimentAnalysis/
 │
 ├── src/
-│   ├── train.py                  # Train TF-IDF models
+│   ├── train_bilstm.py           # Train BiLSTM model
 │   ├── train_bert.py             # Fine-tune BERT models
 │   └── bert_inference.py         # BERT inference helper
 │
@@ -175,23 +174,19 @@ models/
 
 ---
 
-# 📊 Train TF-IDF Models
+# 📊 Train BiLSTM Model
 
 ```bash
-python src/train.py
+python src/train_bilstm.py
 ```
-
-Models evaluated:
-
-- Logistic Regression
-- LinearSVC
-- Naive Bayes
 
 Generated:
 
 ```text
 models/
-└── sentiment_model.joblib
+└── bilstm_sentiment/
+    ├── bilstm_model.pt
+    └── vocab.pkl
 ```
 
 ---
@@ -275,16 +270,16 @@ docker compose run --rm test-ui
 
 # 🧪 Run Tests Locally
 
-TF-IDF:
-
-```bash
-python tests/test_model.py
-```
-
 BERT:
 
 ```bash
 python tests/test_bert.py
+```
+
+BiLSTM:
+
+```bash
+python tests/test_model.py
 ```
 
 API:

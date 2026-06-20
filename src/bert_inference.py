@@ -144,7 +144,11 @@ class BERTPredictor:
             )
 
         self.device = device or torch.device("cpu")
-        ck = torch.load(ckpt_path, map_location=self.device)
+        try:
+            ck = torch.load(ckpt_path, map_location=self.device, weights_only=False)
+        except TypeError:
+            # Fallback for PyTorch versions that do not support weights_only argument.
+            ck = torch.load(ckpt_path, map_location=self.device)
 
         # Build model
         model_type = ck["bert_config"].get("model_type", "bert")
@@ -200,3 +204,118 @@ class BERTPredictor:
     @torch.no_grad()
     def predict_batch(self, texts: list) -> list:
         return [self.predict(t) for t in texts]
+    @torch.no_grad()
+    def explain_keywords(self, text: str, top_n: int = 5) -> list:
+        """Extract meaningful keywords and phrases from `text` by leave-one-out importance.
+
+        Strategy:
+          - Compute baseline probability for the predicted class.
+          - Extract candidates: only meaningful phrases and sentiment words.
+          - For each candidate, remove it and re-run model; measure probability drop.
+          - Return top_n candidates by importance (probability drop).
+        """
+        try:
+            if not text or not text.strip():
+                return []
+
+            # Meaningful phrases (should be meaningful combinations)
+            meaningful_phrases = {
+                # POSITIVE phrases
+                'rất tuyệt', 'tuyệt vời', 'rất nhanh', 'chất lượng tốt', 'giao hàng nhanh',
+                'chất lượng cao', 'rất đẹp', 'rất hay', 'xuất sắc', 'xứng đáng',
+                'chất lượng', 'tuyệt', 'nhanh', 'đẹp', 'tốt', 'hay', 'xuất',
+                # NEUTRAL phrases
+                'bình thường', 'trung bình', 'chấp nhận được', 'ổn',
+                # NEGATIVE phrases
+                'kém chất lượng', 'giao sai', 'giao chậm', 'chất lượng kém', 'rất tệ',
+                'tồi tệ', 'tệ', 'kém', 'xấu', 'chậm', 'sai', 'hỏng', 'xấu',
+            }
+
+            # Important single words (sentiment-bearing)
+            sentiment_words = {
+                'tốt', 'tuyệt', 'xuất', 'sắc', 'đẹp', 'qua', 'hay',
+                'xấu', 'tồi', 'tệ', 'kém', 'dở', 'thấp',
+                'nhanh', 'chậm', 'sai', 'hỏng', 'xứng', 'đáng',
+                'chất', 'lượng', 'giao', 'hàng', 'ổn', 'bình'
+            }
+
+            # Baseline prediction
+            enc = self.tokenizer(text, max_length=128, padding="max_length", truncation=True, return_tensors="pt")
+            ids = enc["input_ids"].to(self.device)
+            mask = enc["attention_mask"].to(self.device)
+            logits = self.model(ids, mask)
+            probs = torch.softmax(logits, dim=1)
+            base_idx = int(probs.argmax(dim=1).item())
+            base_prob = float(probs[0, base_idx].item())
+
+            words = [w.lower().strip('.,!?;:') for w in text.split() if w.strip()]
+            if len(words) == 0:
+                return []
+
+            candidates = []
+
+            # 1. Extract meaningful n-grams (bigrams, trigrams) from whitelist
+            for i in range(len(words)):
+                # Bigrams
+                if i + 1 < len(words):
+                    bigram = " ".join(words[i:i+2])
+                    if bigram in meaningful_phrases:
+                        candidates.append(bigram)
+                # Trigrams
+                if i + 2 < len(words):
+                    trigram = " ".join(words[i:i+3])
+                    if trigram in meaningful_phrases:
+                        candidates.append(trigram)
+
+            # 2. Add individual sentiment-bearing words
+            for word in words:
+                if word in sentiment_words:
+                    candidates.append(word)
+
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_candidates = []
+            for c in candidates:
+                if c not in seen:
+                    seen.add(c)
+                    unique_candidates.append(c)
+            candidates = unique_candidates[:min(len(unique_candidates), 15)]
+
+            # 3. Compute importance via leave-one-out
+            drops = []
+            for candidate in candidates:
+                # Check if candidate exists in original text
+                if candidate not in text.lower():
+                    continue
+                
+                # Remove candidate and measure probability drop
+                reduced = text.lower().replace(candidate, "").strip()
+                reduced = " ".join(reduced.split())
+                
+                if not reduced or len(reduced.split()) == 0:
+                    continue
+
+                try:
+                    enc2 = self.tokenizer(reduced, max_length=128, padding="max_length", truncation=True, return_tensors="pt")
+                    ids2 = enc2["input_ids"].to(self.device)
+                    mask2 = enc2["attention_mask"].to(self.device)
+                    logits2 = self.model(ids2, mask2)
+                    probs2 = torch.softmax(logits2, dim=1)
+                    prob2 = float(probs2[0, base_idx].item())
+                    drop = base_prob - prob2
+                    if drop >= 0:
+                        drops.append((candidate, drop))
+                except Exception:
+                    pass
+
+            # 4. Sort by importance and return top_n
+            drops.sort(key=lambda x: x[1], reverse=True)
+            keywords = [c for c, _ in drops][:top_n]
+            
+            # Fallback: if no keywords found, return top sentiment words
+            if not keywords:
+                keywords = [w for w in words if w in sentiment_words][:top_n]
+            
+            return keywords
+        except Exception:
+            return []

@@ -9,6 +9,7 @@ Kết quả PASS = BERT hoạt động tốt, sẵn sàng push lên GitHub
 
 import os, sys, time, json
 import torch
+import numpy as np
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
@@ -84,7 +85,27 @@ for i in range(len(available)):
 
     print(f"\n[2] Load checkpoint ({first_model})")
     try:
-        ck.append(torch.load(ckpt_path, map_location="cpu"))
+        # Allowlist common numpy globals used in legacy checkpoints
+        allowlist = [
+            getattr(np, "dtype", None),
+            getattr(np.core.multiarray, "scalar", None),
+            getattr(np, "ndarray", None),
+            getattr(np, "float64", None),
+            (getattr(getattr(np, "dtypes", None), "Float64DType", None)),
+        ]
+        allowlist = [a for a in allowlist if a is not None]
+
+        try:
+            with torch.serialization.safe_globals(allowlist):
+                ck.append(torch.load(ckpt_path, map_location="cpu"))
+        except AttributeError:
+            # Fallback for torch versions without safe_globals
+            try:
+                torch.serialization.add_safe_globals(allowlist)
+            except Exception:
+                pass
+            ck.append(torch.load(ckpt_path, map_location="cpu"))
+
         check("Load bert_model.pt thành công", True)
     except Exception as e:
         check("Load bert_model.pt thành công", False, str(e))

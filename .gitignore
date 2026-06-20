@@ -1,8 +1,10 @@
 # Model weights (quá nặng để push)
 models/*.pt
 models/*.joblib
+*.pkl                     # [MỚI] Chặn tất cả file pickle ở mọi nơi
 models/bert_sentiment/*
 models/model_sentiment/*
+models/bilstm_sentiment/* # [MỚI] Chặn thư mục chứa model BiLSTM vừa train
 
 # Data thật (chỉ giữ generate_sample.py)
 data/cleaned_data.csv

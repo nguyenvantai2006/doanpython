@@ -16,8 +16,8 @@
   ✅ PASS  Key 'accuracy' tồn tại trong checkpoint
   ✅ PASS  Key 'f1_macro' tồn tại trong checkpoint
   ✅ PASS  Key 'model_key' tồn tại trong checkpoint
-  ❌ FAIL  Accuracy >= 0.70 — Hiện tại: 0.4000
-  ❌ FAIL  Macro-F1 >= 0.60 — Hiện tại: 0.1905
+  ✅ PASS  Accuracy >= 0.70
+  ✅ PASS  Macro-F1 >= 0.60
 
 [3] Khởi tạo BERTPredictor
   ✅ PASS  BERTPredictor('demo') khởi tạo thành công
@@ -29,12 +29,12 @@
 ==========================================================
 
 [4] Kiểm tra ngữ nghĩa (semantic correctness)
-  ✅ PASS  [😊 POSITIVE conf=0.6388]  chất lượng tuyệt vời giao hàng rất nhanh đóng gói đẹ
-  ❌ FAIL  [😊 POSITIVE conf=0.6388]  hàng lỗi giao sai màu cửa hàng không trả lời khiếu n
-  ❌ FAIL  [😊 POSITIVE conf=0.6393]  sản phẩm tạm được giá hơi cao so với chất lượng
-  ✅ PASS  [😊 POSITIVE conf=0.6395]  rất đáng tiền sẽ mua lại ủng hộ cửa hàng
-  ❌ FAIL  [😊 POSITIVE conf=0.6395]  giao thiếu hàng nhắn tin không phản hồi rất thất vọn
-  ❌ FAIL  [😊 POSITIVE conf=0.6378]  hàng tạm ổn nhưng giao hơi chậm bình thường thôi
+  ✅ PASS  [😊 POSITIVE conf=0.9742]  chất lượng tuyệt vời giao hàng rất nhanh đóng gói đẹ
+  ✅ PASS  [😞 NEGATIVE conf=0.9390]  hàng lỗi giao sai màu cửa hàng không trả lời khiếu n
+  ✅ PASS  [😐 NEUTRAL  conf=0.5152]  sản phẩm tạm được giá hơi cao so với chất lượng
+  ✅ PASS  [😊 POSITIVE conf=0.9643]  rất đáng tiền sẽ mua lại ủng hộ cửa hàng
+  ✅ PASS  [😞 NEGATIVE conf=0.9525]  giao thiếu hàng nhắn tin không phản hồi rất thất vọn
+  ✅ PASS  [😐 NEUTRAL  conf=0.6563]  hàng tạm ổn nhưng giao hơi chậm bình thường thôi
 
 [5] Kiểm tra output format
   ✅ PASS  Có key 'label'
@@ -47,7 +47,7 @@
 
 [6] Kiểm tra batch inference
   ✅ PASS  Batch 12 câu trả về đúng số kết quả
-  ✅ PASS  Tốc độ batch < 2000ms (hiện tại: 85ms)
+  ✅ PASS  Tốc độ batch < 2000ms (hiện tại: 137ms)
 
 [7] Kiểm tra edge cases
   ✅ PASS  Câu rất ngắn (2 ký tự) không crash
@@ -64,9 +64,7 @@
   ✅ PASS  Mỗi model trong list có checkpoint
 
 ==========================================================
-  ⚠️  3 test(s) FAIL:
-     • Accuracy >= 0.70
-     • Macro-F1 >= 0.60
-     • Một số câu semantic test sai
-  Kiểm tra lại trước khi push.
+  🎉 TẤT CẢ TESTS ĐỀU PASS
+  ✅ Accuracy=0.7642  Macro-F1=0.6500 Models: demo
+  ✅ BERT sẵn sàng đẩy lên GitHub!
 ==========================================================
